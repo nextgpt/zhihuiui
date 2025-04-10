@@ -425,6 +425,21 @@
 										<span>{$i18n.t('Continue with {{provider}}', { provider: 'GitHub' })}</span>
 									</button>
 								{/if}
+								{#if $config?.oauth?.providers?.wecom}
+									<button
+										class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"
+										on:click={() => {
+											window.location.href = `${WEBUI_BASE_URL}/oauth/wecom/login`;
+										}}
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="size-6 mr-3">
+											<path 
+												fill="#07C160"
+												d="M9.5 8.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm5 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm-10 5.5c0-3.3 2.7-6 6-6h3c3.3 0 6 2.7 6 6v3c0 3.3-2.7 6-6 6h-3c-3.3 0-6-2.7-6-6v-3z"/>
+										</svg>
+										<span>{$i18n.t('Continue with {{provider}}', { provider: '企业微信' })}</span>
+									</button>
+								{/if}
 								{#if $config?.oauth?.providers?.oidc}
 									<button
 										class="flex justify-center items-center bg-gray-700/5 hover:bg-gray-700/10 dark:bg-gray-100/5 dark:hover:bg-gray-100/10 dark:text-gray-300 dark:hover:text-white transition w-full rounded-full font-medium text-sm py-2.5"

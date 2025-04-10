@@ -216,16 +216,38 @@ class OAuthManager:
                 )
 
     async def handle_login(self, request, provider):
+        log.info(f"处理OAuth登录请求: 提供商={provider}")
         if provider not in OAUTH_PROVIDERS:
-            raise HTTPException(404)
-        # If the provider has a custom redirect URL, use that, otherwise automatically generate one
-        redirect_uri = OAUTH_PROVIDERS[provider].get("redirect_uri") or request.url_for(
+            log.error(f"未知的OAuth提供商: {provider}")
+            raise HTTPException(404, detail=f"未知的OAuth提供商: {provider}")
+            
+        # 检查提供商配置
+        provider_config = OAUTH_PROVIDERS.get(provider, {})
+        log.info(f"提供商配置: {provider_config}")
+        
+        # 如果有自定义授权URL，直接使用它进行重定向
+        if "custom_authorize_url" in provider_config:
+            custom_url = provider_config.get("custom_authorize_url")
+            log.info(f"使用自定义授权URL: {custom_url}")
+            return RedirectResponse(url=custom_url)
+        
+        # 标准OAuth流程：获取回调URL，创建客户端，执行授权重定向
+        redirect_uri = provider_config.get("redirect_uri") or request.url_for(
             "oauth_callback", provider=provider
         )
-        client = self.get_client(provider)
-        if client is None:
-            raise HTTPException(404)
-        return await client.authorize_redirect(request, redirect_uri)
+        log.info(f"使用回调URL: {redirect_uri}")
+        
+        try:
+            client = self.get_client(provider)
+            if client is None:
+                log.error(f"无法创建OAuth客户端: {provider}")
+                raise HTTPException(404, detail=f"无法创建OAuth客户端: {provider}")
+                
+            log.info(f"成功创建OAuth客户端: {provider}")
+            return await client.authorize_redirect(request, redirect_uri)
+        except Exception as e:
+            log.error(f"OAuth重定向失败: {e}")
+            raise HTTPException(500, detail=f"OAuth重定向失败: {str(e)}")
 
     async def handle_callback(self, request, provider, response):
         if provider not in OAUTH_PROVIDERS:
@@ -236,12 +258,24 @@ class OAuthManager:
         except Exception as e:
             log.warning(f"OAuth callback error: {e}")
             raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
-        user_data: UserInfo = token.get("userinfo")
-        if not user_data or auth_manager_config.OAUTH_EMAIL_CLAIM not in user_data:
-            user_data: UserInfo = await client.userinfo(token=token)
-        if not user_data:
-            log.warning(f"OAuth callback failed, user data is missing: {token}")
-            raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+        
+        # 检查是否有自定义的回调处理函数
+        if "custom_handler" in OAUTH_PROVIDERS[provider]:
+            try:
+                user_data = await OAUTH_PROVIDERS[provider]["custom_handler"](client, token, request)
+                if not user_data:
+                    log.warning(f"Custom OAuth handler returned no user data for {provider}")
+                    raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+            except Exception as e:
+                log.warning(f"Custom OAuth handler error for {provider}: {e}")
+                raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
+        else:
+            user_data: UserInfo = token.get("userinfo")
+            if not user_data or auth_manager_config.OAUTH_EMAIL_CLAIM not in user_data:
+                user_data: UserInfo = await client.userinfo(token=token)
+            if not user_data:
+                log.warning(f"OAuth callback failed, user data is missing: {token}")
+                raise HTTPException(400, detail=ERROR_MESSAGES.INVALID_CRED)
 
         sub = user_data.get(OAUTH_PROVIDERS[provider].get("sub_claim", "sub"))
         if not sub:

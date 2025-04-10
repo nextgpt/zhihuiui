@@ -1,0 +1,34 @@
+from fastapi import HTTPException
+import httpx
+from typing import Dict
+
+class WecomAuthService:
+    def __init__(self, settings):
+        self.settings = settings
+        self.access_token = None
+        
+    async def get_access_token(self) -> str:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://qyapi.weixin.qq.com/cgi-bin/gettoken",
+                params={
+                    "corpid": self.settings.WECOM_CORPID,
+                    "corpsecret": self.settings.WECOM_CORPSECRET
+                }
+            )
+            data = response.json()
+            if data.get("errcode") != 0:
+                raise HTTPException(status_code=401, detail="获取access_token失败")
+            return data["access_token"]
+    
+    async def get_user_info(self, code: str) -> Dict:
+        token = await self.get_access_token()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo",
+                params={
+                    "access_token": token,
+                    "code": code
+                }
+            )
+            return response.json()

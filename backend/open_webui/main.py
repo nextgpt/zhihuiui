@@ -421,6 +421,17 @@ async def lifespan(app: FastAPI):
     if LICENSE_KEY:
         get_license_data(app, LICENSE_KEY)
 
+    # 加载企业微信 OAuth 扩展
+    try:
+        from open_webui.extensions.wecom_oauth import WecomOAuthProvider
+        log.info("企业微信 OAuth 扩展已加载")
+        
+        # 检查OAuth提供商列表
+        from open_webui.config import OAUTH_PROVIDERS
+        log.info(f"当前已注册的OAuth提供商: {', '.join(OAUTH_PROVIDERS.keys())}")
+    except Exception as e:
+        log.warning(f"加载企业微信 OAuth 扩展失败: {e}")
+
     asyncio.create_task(periodic_usage_pool_cleanup())
     yield
 
@@ -853,6 +864,14 @@ class RedirectMiddleware(BaseHTTPMiddleware):
                 video_id = query_params["v"][0]  # Extract the first 'v' parameter
                 encoded_video_id = urlencode({"youtube": video_id})
                 redirect_url = f"/?{encoded_video_id}"
+                return RedirectResponse(url=redirect_url)
+            
+            # 处理OAuth路径
+            if "/api/oauth/" in path:
+                # 将 /api/oauth/wecom/login 重定向到 /oauth/wecom/login
+                new_path = path.replace("/api/oauth/", "/oauth/")
+                redirect_url = f"{new_path}"
+                log.info(f"重定向OAuth请求: {path} -> {redirect_url}")
                 return RedirectResponse(url=redirect_url)
 
         # Proceed with the normal flow of other requests
@@ -1374,7 +1393,12 @@ if len(OAUTH_PROVIDERS) > 0:
 
 @app.get("/oauth/{provider}/login")
 async def oauth_login(provider: str, request: Request):
-    return await oauth_manager.handle_login(request, provider)
+    log.info(f"OAuth登录请求: 提供商={provider}, 路径={request.url.path}")
+    try:
+        return await oauth_manager.handle_login(request, provider)
+    except Exception as e:
+        log.error(f"OAuth登录处理异常: {e}")
+        raise HTTPException(500, detail=f"OAuth登录失败: {str(e)}")
 
 
 # OAuth login logic is as follows:

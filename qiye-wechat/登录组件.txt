@@ -1,0 +1,20 @@
+<!-- filepath: /frontend/src/components/WecomLogin.vue -->
+<template>
+  <div class="login-container">
+    <a-button type="primary" @click="handleLogin">
+      企业微信登录
+    </a-button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+
+const { loginWithWecom } = useAuth()
+
+const handleLogin = () => {
+  const redirect_uri = encodeURIComponent(window.location.origin + '/auth/callback')
+  const url = `https://open.work.weixin.qq.com/wwopen/sso/qrConnect?appid=${import.meta.env.VITE_WECOM_CORPID}&agentid=${import.meta.env.VITE_WECOM_AGENT_ID}&redirect_uri=${redirect_uri}`
+  window.location.href = url
+}
+</script>

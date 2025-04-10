@@ -1,0 +1,29 @@
+-- 用户表
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    wecom_userid VARCHAR(64) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    avatar_url TEXT,
+    department JSON,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP WITH TIME ZONE
+);
+
+-- 会话表
+CREATE TABLE chat_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    title VARCHAR(200),
+    model VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 消息表
+CREATE TABLE messages (
+    id SERIAL PRIMARY KEY,
+    session_id INTEGER REFERENCES chat_sessions(id),
+    role VARCHAR(20) CHECK (role IN ('user', 'assistant', 'system')),
+    content TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

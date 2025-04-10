@@ -1,0 +1,29 @@
+import { defineStore } from 'pinia'
+
+export const useAuthStore = defineStore('auth', {
+  state: () => ({
+    user: null,
+    token: null,
+  }),
+  
+  actions: {
+    async login(code: string) {
+      try {
+        const response = await fetch('/api/auth/wecom/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ code }),
+        })
+        const data = await response.json()
+        this.token = data.token
+        this.user = data.user
+        localStorage.setItem('token', data.token)
+      } catch (error) {
+        console.error('登录失败:', error)
+        throw error
+      }
+    },
+  },
+})
